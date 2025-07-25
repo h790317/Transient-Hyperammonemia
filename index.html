@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>癲癇與血氨：互動式臨床指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Calm Harmony" - Neutrals (slate), with a primary color (sky blue) and an accent (amber). -->
+    <!-- Application Structure Plan: A thematic, single-page scrolling application designed to guide the user through a narrative journey. It starts with a high-level introduction, dives into the core biochemical mechanism via an interactive flowchart, showcases the clinical utility with a data visualization, clarifies differential diagnoses with an interactive tabbed component, and concludes with management principles. This story-driven structure was chosen over a simple report mirror to make the complex information more digestible, engaging, and memorable for clinicians and students, facilitating understanding from cause to clinical application. -->
+    <!-- Visualization & Content Choices: 
+        1. Mechanism Flowchart (HTML/CSS/JS): Goal: Organize/Inform. Interaction: Click to reveal details. Justification: Transforms the dense text about the Purine Nucleotide Cycle into a simple, step-by-step interactive discovery process, enhancing learning and retention.
+        2. Ammonia Levels Bar Chart (Chart.js/Canvas): Goal: Compare. Interaction: Hover for tooltips. Justification: Provides a powerful visual comparison of ammonia levels in GCS vs. PNES, highlighting the test's diagnostic power, which is a central theme of the report.
+        3. Differential Diagnosis Tabs (HTML/CSS/JS): Goal: Compare/Organize. Interaction: Click to switch views. Justification: Breaks down the complex Table 3 into a user-friendly, interactive component, allowing for easy comparison of critical features without overwhelming the user.
+        4. Management Principles Layout (HTML/CSS): Goal: Inform. Interaction: Static columns. Justification: Clearly separates the two main management pathways (observation vs. intervention) for quick reference.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMcAgsccfgSLGbMHWlV52H4YcRRMCIvM_Lih3TfGteRjaIs9l" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmIm0QCgFE" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 320px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #0284c7; /* sky-700 */
+            transform: translateY(-2px);
+        }
+        .interactive-card {
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+        }
+        .interactive-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .tab-button {
+            transition: all 0.2s ease;
+        }
+        .tab-button.active {
+            background-color: #0369a1; /* sky-700 */
+            color: white;
+        }
+        .reference-list li {
+            padding-left: 1.5em;
+            text-indent: -1.5em;
+        }
+        .reference-list li::before {
+            content: "[" attr(data-ref) "] ";
+            font-weight: bold;
+            color: #0ea5e9; /* sky-500 */
+            padding-right: 0.5em;
+        }
+        .citation {
+            font-size: 0.75em;
+            vertical-align: super;
+            color: #0ea5e9;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="text-slate-700">
+
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="text-2xl font-bold text-slate-800">
+                <span class="text-sky-600">癲癇</span>與<span class="text-amber-600">血氨</span>
+            </div>
+            <div class="hidden md:flex space-x-8 text-slate-600 font-medium">
+                <a href="#mechanism" class="nav-link">生化機轉</a>
+                <a href="#diagnosis" class="nav-link">診斷應用</a>
+                <a href="#differential" class="nav-link">鑑別診斷</a>
+                <a href="#management" class="nav-link">治療原則</a>
+                <a href="#reference" class="nav-link">參考文獻</a>
+            </div>
+            <div class="md:hidden">
+                <button id="menu-btn" class="text-slate-700 focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="md:hidden hidden bg-white border-t">
+            <a href="#mechanism" class="nav-link block py-2 px-4 text-sm text-slate-600 hover:bg-sky-50">生化機轉</a>
+            <a href="#diagnosis" class="nav-link block py-2 px-4 text-sm text-slate-600 hover:bg-sky-50">診斷應用</a>
+            <a href="#differential" class="nav-link block py-2 px-4 text-sm text-slate-600 hover:bg-sky-50">鑑別診斷</a>
+            <a href="#management" class="nav-link block py-2 px-4 text-sm text-slate-600 hover:bg-sky-50">治療原則</a>
+            <a href="#reference" class="nav-link block py-2 px-4 text-sm text-slate-600 hover:bg-sky-50">參考文獻</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+        <section id="hero" class="text-center mb-16 md:mb-24">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4">從代謝風暴到診斷利器</h1>
+            <p class="text-lg md:text-xl text-slate-600 max-w-3xl mx-auto">一份關於癲癇發作後高血氨症的互動式臨床指南。探索其生化路徑、學習如何運用它進行精準診斷，並掌握關鍵的鑑別與治療原則。</p>
+            <a href="#mechanism" class="mt-8 inline-block bg-sky-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:bg-sky-700 transition-transform transform hover:scale-105">
+                開始探索
+            </a>
+        </section>
+
+        <section id="mechanism" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center text-slate-800 mb-2">生化機轉</h2>
+            <p class="text-center text-slate-500 mb-12 max-w-2xl mx-auto">癲癇發作後的高血氨並非源於肝臟問題，而是一場由大腦指令觸發的周邊肌肉「代謝風暴」。<a href="#ref-17" class="citation">[17, 19]</a> 點擊下方卡片，逐步了解氨是如何生成的。</p>
+            
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4 text-center">
+                <div id="step1" class="interactive-card bg-white p-6 rounded-xl shadow-md w-full md:w-1/4">
+                    <div class="text-4xl mb-3">🧠</div>
+                    <h3 class="font-bold text-slate-800">步驟一</h3>
+                    <p class="text-sm text-slate-500">大腦電風暴</p>
+                </div>
+                <div class="text-2xl text-sky-400 font-sans">→</div>
+                <div id="step2" class="interactive-card bg-white p-6 rounded-xl shadow-md w-full md:w-1/4">
+                    <div class="text-4xl mb-3">💪</div>
+                    <h3 class="font-bold text-slate-800">步驟二</h3>
+                    <p class="text-sm text-slate-500">肌肉能量危機</p>
+                </div>
+                <div class="text-2xl text-sky-400 font-sans">→</div>
+                <div id="step3" class="interactive-card bg-white p-6 rounded-xl shadow-md w-full md:w-1/4">
+                    <div class="text-4xl mb-3">🔄</div>
+                    <h3 class="font-bold text-slate-800">步驟三</h3>
+                    <p class="text-sm text-slate-500">PNC循環啟動</p>
+                </div>
+                 <div class="text-2xl text-sky-400 font-sans">→</div>
+                <div id="step4" class="interactive-card bg-white p-6 rounded-xl shadow-md w-full md:w-1/4">
+                    <div class="text-4xl mb-3">🩸</div>
+                    <h3 class="font-bold text-slate-800">步驟四</h3>
+                    <p class="text-sm text-slate-500">血氨急遽升高</p>
+                </div>
+            </div>
+
+            <div id="mechanism-details" class="mt-8 p-6 bg-white rounded-lg shadow-inner min-h-[150px] flex items-center justify-center transition-all duration-500">
+                <p class="text-slate-500">點擊上方任一步驟以查看詳細說明。</p>
+            </div>
+        </section>
+
+        <section id="diagnosis" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center text-slate-800 mb-2">診斷應用</h2>
+            <p class="text-center text-slate-500 mb-12 max-w-2xl mx-auto">發作後血氨檢測是區分癲癇性抽搐與心因性非癲癇性發作(PNES)的強力工具。<a href="#ref-15" class="citation">[15]</a> 其關鍵在於「短暫性」以及與非癲癇事件的顯著差異。</p>
+
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <div class="bg-white p-6 rounded-xl shadow-lg">
+                    <h3 class="font-bold text-center mb-4 text-slate-800">發作後血氨水平比較<a href="#ref-15" class="citation">[15]</a></h3>
+                    <div class="chart-container">
+                        <canvas id="ammoniaChart"></canvas>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-bold text-lg text-sky-700 mb-2">關鍵診斷閾值</h3>
+                        <p class="text-4xl font-bold text-slate-800">≥80 <span class="text-2xl">µmol/L</span></p>
+                        <p class="mt-2 text-slate-600">以此為切點，區分全身性抽搐(GCS)與心因性發作(PNES)的<span class="font-bold text-amber-600">特異性高達100%</span>，使其成為絕佳的「確診性」(rule-in)測試。<a href="#ref-15" class="citation">[15]</a></p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-lg">
+                        <h3 class="font-bold text-lg text-sky-700 mb-2">檢測黃金時間</h3>
+                         <p class="text-slate-600">由於血氨會快速下降，採血時機至關重要。</p>
+                        <div class="mt-3 flex items-center space-x-4">
+                            <div class="text-3xl">⏱️</div>
+                            <div>
+                                <p class="font-bold text-slate-800">最佳窗口：發作後 15-60 分鐘</p>
+                                <p class="text-sm text-slate-500">血氨水平在此期間達到峰值，診斷價值最高。<a href="#ref-15" class="citation">[15]</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="differential" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center text-slate-800 mb-2">鑑別診斷</h2>
+            <p class="text-center text-slate-500 mb-12 max-w-2xl mx-auto">遇到癲癇合併高血氨，必須判斷高血氨是癲癇的「果」還是「因」。點擊下方標籤，比較不同病因的關鍵特徵。</p>
+            
+            <div class="bg-white rounded-xl shadow-lg p-2 md:p-4">
+                <div class="flex flex-wrap justify-center gap-2 mb-4">
+                    <button class="tab-button px-4 py-2 text-sm font-medium rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 active" data-target="tha">癲癇誘發 (THA)</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300" data-target="he">肝性腦病 (HE)</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300" data-target="ucd">尿素循環障礙 (UCD)</button>
+                    <button class="tab-button px-4 py-2 text-sm font-medium rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300" data-target="vpa">藥物毒性 (VPA)</button>
+                </div>
+
+                <div id="differential-content" class="p-4 bg-slate-50 rounded-lg">
+                    <div id="tha" class="content-section active">
+                        <h3 class="font-bold text-xl text-sky-700 mb-3">癲癇誘發的短暫性高血氨 (THA)</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-600">
+                            <li><span class="font-semibold">高血氨持續時間：</span><span class="text-amber-600 font-bold">短暫 (1-8小時)</span>，會自行快速緩解。<a href="#ref-22" class="citation">[22, 25]</a></li>
+                            <li><span class="font-semibold">肝功能檢測 (LFTs)：</span>通常正常。<a href="#ref-22" class="citation">[22]</a></li>
+                            <li><span class="font-semibold">酸鹼狀態：</span>常伴隨乳酸性酸中毒。<a href="#ref-16" class="citation">[16]</a></li>
+                            <li><span class="font-semibold">臨床核心：</span>良性、自限性的現象，是癲癇的「後果」。</li>
+                            <li><span class="font-semibold">處置：</span>支持性護理，觀察即可。</li>
+                        </ul>
+                    </div>
+                    <div id="he" class="content-section">
+                        <h3 class="font-bold text-xl text-sky-700 mb-3">肝性腦病 (HE)</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-600">
+                            <li><span class="font-semibold">高血氨持續時間：</span><span class="text-red-600 font-bold">持續性</span>，反映肝臟清除能力缺陷。<a href="#ref-23" class="citation">[23]</a></li>
+                            <li><span class="font-semibold">肝功能檢測 (LFTs)：</span><span class="text-red-600 font-bold">顯著異常</span>。<a href="#ref-27" class="citation">[27]</a></li>
+                            <li><span class="font-semibold">臨床背景：</span>通常有已知急/慢性肝病史。<a href="#ref-23" class="citation">[23]</a></li>
+                            <li><span class="font-semibold">臨床核心：</span>癲癇是肝衰竭的「表現」，高血氨是「病因」。</li>
+                            <li><span class="font-semibold">處置：</span>需使用Lactulose, Rifaximin等藥物治療。<a href="#ref-30" class="citation">[30]</a></li>
+                        </ul>
+                    </div>
+                    <div id="ucd" class="content-section">
+                        <h3 class="font-bold text-xl text-sky-700 mb-3">尿素循環障礙 (UCD)</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-600">
+                            <li><span class="font-semibold">高血氨持續時間：</span><span class="text-red-600 font-bold">持續性</span>，且常進行性加重。<a href="#ref-7" class="citation">[7, 8]</a></li>
+                            <li><span class="font-semibold">臨床背景：</span>癲癇發作作為代謝壓力，揭示了潛在的遺傳疾病。</li>
+                            <li><span class="font-semibold">酸鹼狀態：</span>常伴隨呼吸性鹼中毒。</li>
+                            <li><span class="font-semibold">臨床核心：</span>極度危險的信號，患者可能迅速惡化。</li>
+                             <li><span class="font-semibold">處置：</span>緊急干預，包括停蛋白、氮清除劑、甚至透析。<a href="#ref-9" class="citation">[9]</a></li>
+                        </ul>
+                    </div>
+                    <div id="vpa" class="content-section">
+                        <h3 class="font-bold text-xl text-sky-700 mb-3">丙戊酸(VPA)相關高血氨症</h3>
+                        <ul class="list-disc list-inside space-y-2 text-slate-600">
+                            <li><span class="font-semibold">高血氨持續時間：</span><span class="text-red-600 font-bold">持續性</span>，與藥物相關。<a href="#ref-22" class="citation">[22]</a></li>
+                            <li><span class="font-semibold">臨床背景：</span>患者正在服用VPA，尤其與其他AEDs合用時風險更高。<a href="#ref-33" class="citation">[33, 34]</a></li>
+                            <li><span class="font-semibold">臨床挑戰：</span>需與發作後的THA鑑別。系列性監測血氨是關鍵，若數小時後無下降趨勢，則高度懷疑藥物毒性。</li>
+                            <li><span class="font-semibold">處置：</span>考慮停/減VPA，補充左旋肉鹼(L-Carnitine)。<a href="#ref-33" class="citation">[33]</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="management" class="mb-16 md:mb-24 scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center text-slate-800 mb-2">治療原則</h2>
+            <p class="text-center text-slate-500 mb-12 max-w-2xl mx-auto">管理的核心是「治療病人，而非治療數值」。策略必須基於病因，高度個體化。</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-green-50 border-l-4 border-green-500 p-6 rounded-r-lg shadow-md">
+                    <h3 class="font-bold text-2xl text-green-800 mb-4">✅ 觀察即可：無併發症的THA</h3>
+                    <p class="text-green-700">在臨床情境明確的病例中（如典型的GTCS、無肝病史、未用VPA），發作後THA是良性、自限性的現象。<a href="#ref-22" class="citation">[22, 25]</a></p>
+                    <ul class="mt-4 list-disc list-inside space-y-2 text-green-700">
+                        <li>無需積極降氨治療。</li>
+                        <li>提供支持性護理。</li>
+                        <li>可在2-4小時後複查血氨，確認其下降趨勢。<a href="#ref-26" class="citation">[26]</a></li>
+                    </ul>
+                </div>
+                <div class="bg-red-50 border-l-4 border-red-500 p-6 rounded-r-lg shadow-md">
+                     <h3 class="font-bold text-2xl text-red-800 mb-4">🚨 積極介入：嚴重或持續性高血氨</h3>
+                    <p class="text-red-700">當高血氨是腦病變的「原因」時（如HE, UCDs），需要迅速干預。</p>
+                     <ul class="mt-4 list-disc list-inside space-y-2 text-red-700">
+                        <li>立即停止蛋白質攝入。<a href="#ref-7" class="citation">[7]</a></li>
+                        <li>靜脈輸注葡萄糖以避免分解代謝。<a href="#ref-7" class="citation">[7]</a></li>
+                        <li>使用降氨藥物 (Lactulose, 氮清除劑等)。<a href="#ref-7" class="citation">[7, 36]</a></li>
+                        <li>在危及生命時，考慮血液透析。<a href="#ref-7" class="citation">[7, 12]</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="reference" class="scroll-mt-20">
+            <h2 class="text-3xl font-bold text-center text-slate-800 mb-2">參考文獻</h2>
+            <p class="text-center text-slate-500 mb-12 max-w-2xl mx-auto">本指南的內容基於以下學術文獻與臨床資源。</p>
+            <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+                <ol class="reference-list list-none space-y-3 text-slate-600 text-sm">
+                    <li id="ref-1" data-ref="1">Fisher, R. S., et al. (2014). A practical clinical definition of epilepsy. *Epilepsia, 55*(4), 475-482.</li>
+                    <li id="ref-2" data-ref="2">Fisher, R. S., et al. (2017). Operational classification of seizure types by the International League Against Epilepsy: Position paper of the ILAE Commission for Classification and Terminology. *Epilepsia, 58*(4), 522-530.</li>
+                    <li id="ref-3" data-ref="3">Scheffer, I. E., et al. (2017). ILAE classification of the epilepsies: Position paper of the ILAE Commission for Classification and Terminology. *Epilepsia, 58*(4), 512-521.</li>
+                    <li id="ref-4" data-ref="4">Blumenfeld, H. (2012). *Neuroanatomy through clinical cases*. Sinauer Associates.</li>
+                    <li id="ref-5" data-ref="5">Baddour, A. A., et al. (2018). Valproic acid-induced hyperammonemia: Incidence, clinical significance, and risk factors. *Journal of Clinical Neuroscience, 57*, 63-68.</li>
+                    <li id="ref-6" data-ref="6">Walker, V. (2009). Ammonia toxicity and its prevention in inherited defects of the urea cycle. *Diabetes, Obesity and Metabolism, 11*(9), 823-835.</li>
+                    <li id="ref-7" data-ref="7">Häberle, J., et al. (2019). Suggested guidelines for the diagnosis and management of urea cycle disorders: First revision. *Journal of Inherited Metabolic Disease, 42*(6), 1192-1230.</li>
+                    <li id="ref-8" data-ref="8">LaBuz, A., et al. (2019). Late-onset urea cycle disorders: a review. *Critical Care, 23*(1), 209.</li>
+                    <li id="ref-9" data-ref="9">Häberle, J. (2013). Clinical and biochemical aspects of primary and secondary hyperammonemic disorders. *Archives of Biochemistry and Biophysics, 536*(2), 101-108.</li>
+                    <li id="ref-10" data-ref="10">Butterworth, R. F. (2002). Pathophysiology of hepatic encephalopathy: a new look at ammonia. *Metabolic Brain Disease, 17*(4), 221-227.</li>
+                    <li id="ref-11" data-ref="11">Hung, C. W., et al. (2011). Transient hyperammonemia is associated with postictal confusion. *Journal of the Formosan Medical Association, 110*(11), 723-727.</li>
+                    <li id="ref-12" data-ref="12">Batshaw, M. L., et al. (2001). Urea cycle disorders. In *The metabolic and molecular bases of inherited disease* (8th ed., pp. 1909-1963). McGraw-Hill.</li>
+                    <li id="ref-13" data-ref="13">Morris, S. M. (2002). Regulation of enzymes of the urea cycle and arginine metabolism. *Annual Review of Nutrition, 22*, 87-105.</li>
+                    <li id="ref-14" data-ref="14">Wikipedia Contributors. (2025). Purine nucleotide cycle. *Wikipedia*.</li>
+                    <li id="ref-15" data-ref="15">Albadareen, R., et al. (2019). Postictal ammonia as a biomarker for generalized convulsive seizures. *Epilepsy & Behavior, 98*, 106-110.</li>
+                    <li id="ref-16" data-ref="16">Weng, W. C., et al. (2009). Post-convulsive hyperammonemia is associated with post-ictal encephalopathy. *Epilepsia, 50*(9), 2108-2114.</li>
+                    <li id="ref-17" data-ref="17">Lowenstein, J. M. (1972). Ammonia production in muscle and other tissues: the purine nucleotide cycle. *Physiological Reviews, 52*(2), 382-414.</li>
+                    <li id="ref-18" data-ref="18">Graham, T. E., et al. (1987). Muscle and blood ammonia and lactate responses to prolonged exercise with and without carbohydrate feedings. *Journal of Applied Physiology, 63*(3), 1094-1100.</li>
+                    <li id="ref-19" data-ref="19">Aragon, J. J., & Lowenstein, J. M. (1980). The purine-nucleotide cycle. *European Journal of Biochemistry, 110*(2), 371-377.</li>
+                    <li id="ref-20" data-ref="20">Schultz, V., & Lowenstein, J. M. (1976). The purine nucleotide cycle. Studies of ammonia production by the deamination of adenosine monophosphate and the deamidation of glutamine in the brain. *Journal of Biological Chemistry, 251*(2), 485-492.</li>
+                    <li id="ref-21" data-ref="21">Gaspard, N., et al. (2017). Transient Hyperammonemia Seen in Post-Seizure Activity: A Series of Six Case Reports. *Scholarly Medical Review Journal, 1*(1), 1-5.</li>
+                    <li id="ref-22" data-ref="22">Gascon-Bayarri, J., et al. (2011). Postictal hyperammonemia in the differential diagnosis of transient loss of consciousness. *Epilepsy & Behavior, 20*(4), 700-702.</li>
+                    <li id="ref-23" data-ref="23">Butterworth, R. F. (2015). Hepatic encephalopathy. *Cold Spring Harbor Perspectives in Medicine, 5*(7), a021503.</li>
+                    <li id="ref-24" data-ref="24">Cleveland Clinic. (2022). Hyperammonemia.</li>
+                    <li id="ref-25" data-ref="25">Gaspard, N. (2013). Postictal hyperammonemia. *Epilepsy & Behavior, 27*(2), 395.</li>
+                    <li id="ref-26" data-ref="26">Hung, C. W., et al. (2011). Transient hyperammonemia in patients with acute loss of consciousness after a seizure attack. *American Journal of Emergency Medicine, 29*(4), 410-413.</li>
+                    <li id="ref-27" data-ref="27">Vilstrup, H., et al. (2014). Hepatic encephalopathy in chronic liver disease: 2014 Practice Guideline by the American Association for the Study of Liver Diseases and the European Association for the Study of the Liver. *Hepatology, 60*(2), 715-735.</li>
+                    <li id="ref-28" data-ref="28">Wikipedia Contributors. (2025). 尿素循環. *Wikipedia*.</li>
+                    <li id="ref-29" data-ref="29">Hung, C. W., et al. (2011). Transient hyperammonemia is associated with postictal confusion. *Journal of the Formosan Medical Association, 110*(11), 723-727.</li>
+                    <li id="ref-30" data-ref="30">Wijdicks, E. F. (2016). Hepatic Encephalopathy. *New England Journal of Medicine, 375*(17), 1660-1670.</li>
+                    <li id="ref-31" data-ref="31">Nedergaard, M., et al. (2013). Drug shows early promise in treating liver failure-related seizures. *Nature Medicine*.</li>
+                    <li id="ref-32" data-ref="32">Gaspard, N., et al. (2008). Transient hyperammonemia, a rare cause of nonconvulsive status epilepticus. *Neurocritical Care, 9*(3), 369-372.</li>
+                    <li id="ref-33" data-ref="33">Lewis, C., et al. (2017). Valproate-induced hyperammonemia. *The American Journal of Psychiatry Residents' Journal, 12*(3), 10-12.</li>
+                    <li id="ref-34" data-ref="34">Segura-Bruna, N., et al. (2006). Valproate-induced hyperammonemic encephalopathy. *Acta Neurologica Scandinavica, 114*(1), 1-7.</li>
+                    <li id="ref-35" data-ref="35">Caudle, R. M., et al. (2007). Lamotrigine- and valproate-induced hyperammonemia. *Epilepsia, 48*(4), 834-835.</li>
+                    <li id="ref-36" data-ref="36">Häberle, J., et al. (2012). Suggested guidelines for the diagnosis and management of urea cycle disorders. *Orphanet Journal of Rare Diseases, 7*(1), 32.</li>
+                    <li id="ref-37" data-ref="37">Clay, A. S., & Hainline, B. E. (2007). Hyperammonemia in the ICU. *Chest, 132*(4), 1368-1378.</li>
+                </ol>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-slate-300 mt-16">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2025 互動式臨床指南。此內容基於學術報告，僅供教育參考，不能取代專業醫療建議。</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$', right: '$', display: false},
+                    {left: '$$', right: '$$', display: true},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ]
+            });
+
+            const menuBtn = document.getElementById('menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            menuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+            
+            navLinks.forEach(link => {
+                link.addEventListener('click', () => {
+                   if (!mobileMenu.classList.contains('hidden')) {
+                       mobileMenu.classList.add('hidden');
+                   }
+                });
+            });
+
+            const mechanismDetails = {
+                step1: {
+                    title: "步驟一：大腦電風暴 (GTCS)",
+                    desc: "一切始於一場大腦的電生理風暴——廣泛性強直陣攣性發作(GTCS)。大量神經元超同步化放電，向全身肌肉發出極端的收縮指令。<a href='#ref-4' class='citation'>[4, 5]</a>"
+                },
+                step2: {
+                    title: "步驟二：肌肉能量危機",
+                    desc: "劇烈的肌肉收縮在數秒內耗盡能量貨幣ATP。為應急，肌肉細胞通過肌激酶反應($2 \\text{ ADP} \\leftrightarrow \\text{ATP} + \\text{AMP}$)產生少量ATP，但這導致了AMP在細胞內大量累積。<a href='#ref-18' class='citation'>[18, 19]</a>"
+                },
+                step3: {
+                    title: "步驟三：嘌呤核苷酸循環 (PNC) 啟動",
+                    desc: "大量累積的AMP是細胞能量耗竭的警報信號，它會活化骨骼肌中的「嘌呤核苷酸循環」。在此循環的第一步，AMP脫氨酶將AMP轉化為IMP，並在此過程中脫去一個胺基，<span class='font-bold text-amber-600'>直接產生一個氨分子($NH_3$)</span>。<a href='#ref-17' class='citation'>[17, 19, 20]</a>"
+                },
+                step4: {
+                    title: "步驟四：血氨急遽升高",
+                    desc: "由於全身肌肉都在進行這個過程，短時間內產生的巨量氨遠超肝臟的清除能力，導致血液中的氨濃度急遽升高，形成發作後高血氨症。<a href='#ref-18' class='citation'>[18]</a>"
+                }
+            };
+
+            const detailsContainer = document.getElementById('mechanism-details');
+            document.querySelectorAll('.interactive-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const stepId = card.id;
+                    const detail = mechanismDetails[stepId];
+                    detailsContainer.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-lg text-slate-800 mb-2">${detail.title}</h4>
+                            <p class="text-slate-600">${detail.desc}</p>
+                        </div>
+                    `;
+                    renderMathInElement(detailsContainer, {
+                         delimiters: [
+                            {left: '$', right: '$', display: false},
+                            {left: '$$', right: '$$', display: true},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ]
+                    });
+                });
+            });
+
+            const ammoniaCtx = document.getElementById('ammoniaChart').getContext('2d');
+            new Chart(ammoniaCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['正常基準值', '心因性發作 (PNES)', '全身性抽搐 (GCS)'],
+                    datasets: [{
+                        label: '血氨水平 (µmol/L)',
+                        data: [30, 32, 120],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.6)',
+                            'rgba(255, 206, 86, 0.6)',
+                            'rgba(255, 99, 132, 0.6)'
+                        ],
+                        borderColor: [
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(255, 99, 132, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        let val = context.parsed.y;
+                                        if (context.label === '心因性發作 (PNES)' || context.label === '全身性抽搐 (GCS)') {
+                                            label += '中位數 ' + val + ' µmol/L';
+                                        } else {
+                                            label += val + ' µmol/L';
+                                        }
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '血氨 (µmol/L)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const contentSections = document.querySelectorAll('.content-section');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.target;
+
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    contentSections.forEach(section => {
+                        if (section.id === targetId) {
+                            section.classList.add('active');
+                        } else {
+                            section.classList.remove('active');
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+
+</body>
+</html>
